@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TruckerCan - Find a Bathroom NOW</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+            padding: 20px;
+        }
+        
+        .header {
+            background: #2ecc71;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .emergency-button {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 30px;
+            font-size: 20px;
+            font-weight: bold;
+            width: 100%;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        
+        .emergency-button:active {
+            background: #c0392b;
+        }
+        
+        .bathroom-card {
+            background: white;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .distance {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2ecc71;
+        }
+        
+        .name {
+            font-size: 18px;
+            margin: 10px 0;
+        }
+        
+        .badges {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        
+        .badge {
+            background: #3498db;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        
+        .badge.warning {
+            background: #f39c12;
+        }
+        
+        .navigate-button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 15px;
+            width: 100%;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        .add-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+        }
+        
+        #bathroomList {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚚 TruckerCan</h1>
+        <p>Find a bathroom. Fast.</p>
+    </div>
+
+    <button class="emergency-button" onclick="findBathrooms(true)">
+        🚨 EMERGENCY - FIND ANY BATHROOM NOW
+    </button>
+
+    <div id="loading" class="loading" style="display: none;">
+        <h2>🚻 Finding nearest bathroom...</h2>
+    </div>
+
+    <div id="bathroomList"></div>
+
+    <button class="add-button" onclick="addBathroom()">+</button>
+
+    <script>
+        // This is where the magic happens!
+        
+        // Sample bathroom data (later this comes from a database)
+        const sampleBathrooms = [
+            {
+                name: "Pilot Travel Center",
+                distance: 0.8,
+                highway: "I-87",
+                exit: "15",
+                truckParking: true,
+                open24h: true,
+                parkingDifficulty: 2,
+                tips: "Park in back row for quiet night"
+            },
+            {
+                name: "Mobil Gas Station",
+                distance: 2.3,
+                highway: "I-87",
+                exit: "17",
+                truckParking: true,
+                open24h: false,
+                parkingDifficulty: 4,
+                tips: "Tight parking, avoid rush hour"
+            },
+            {
+                name: "Rest Area",
+                distance: 4.1,
+                highway: "I-87",
+                exit: "Mile 33",
+                truckParking: true,
+                open24h: true,
+                parkingDifficulty: 1,
+                tips: "Clean, well-lit, safe overnight"
+            }
+        ];
+
+        // Function to find bathrooms
+        function findBathrooms(emergency = false) {
+            // Show loading message
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('bathroomList').innerHTML = '';
+            
+            // Simulate finding bathrooms (1 second delay)
+            setTimeout(() => {
+                displayBathrooms(emergency ? sampleBathrooms : sampleBathrooms.slice(0, 2));
+                document.getElementById('loading').style.display = 'none';
+            }, 1000);
+        }
+
+        // Function to display bathrooms
+        function displayBathrooms(bathrooms) {
+            const listElement = document.getElementById('bathroomList');
+            
+            bathrooms.forEach(bathroom => {
+                const card = document.createElement('div');
+                card.className = 'bathroom-card';
+                
+                card.innerHTML = `
+                    <div class="distance">${bathroom.distance} miles</div>
+                    <div class="name">${bathroom.name}</div>
+                    <div class="location">📍 ${bathroom.highway} Exit ${bathroom.exit}</div>
+                    
+                    <div class="badges">
+                        ${bathroom.truckParking ? '<span class="badge">🚚 Truck OK</span>' : ''}
+                        ${bathroom.open24h ? '<span class="badge">🌙 24 Hours</span>' : ''}
+                        ${bathroom.parkingDifficulty >= 4 ? '<span class="badge warning">⚠️ Tight Parking</span>' : ''}
+                        ${bathroom.parkingDifficulty <= 2 ? '<span class="badge">✅ Easy Park</span>' : ''}
+                    </div>
+                    
+                    ${bathroom.tips ? `<div style="margin-top: 10px; color: #666;">💡 ${bathroom.tips}</div>` : ''}
+                    
+                    <button class="navigate-button" onclick="navigate('${bathroom.name}')">
+                        🗺️ Navigate
+                    </button>
+                `;
+                
+                listElement.appendChild(card);
+            });
+        }
+
+        // Function to navigate (opens Google Maps)
+        function navigate(bathroomName) {
+            // For now, just search Google Maps for the place name
+            const url = `https://www.google.com/maps/search/${encodeURIComponent(bathroomName)}`;
+            window.open(url, '_blank');
+        }
+
+        // Function to add a bathroom
+        function addBathroom() {
+            const name = prompt("What's the name of this truck stop/rest area?");
+            if (name) {
+                const distance = prompt("How many miles from your location?");
+                const tips = prompt("Any tips for other truckers?");
+                
+                // Add to our list
+                sampleBathrooms.push({
+                    name: name,
+                    distance: parseFloat(distance) || 0,
+                    highway: "I-87",
+                    exit: "Unknown",
+                    truckParking: true,
+                    open24h: true,
+                    parkingDifficulty: 3,
+                    tips: tips
+                });
+                
+                alert("Thanks! Bathroom added!");
+                findBathrooms();
+            }
+        }
+
+        // Load bathrooms when page opens
+        window.onload = function() {
+            findBathrooms();
+        };
+    </script>
+</body>
+</html>
