@@ -115,16 +115,176 @@
         #bathroomList {
             margin-top: 20px;
         }
+
+        .settings-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: #34495e;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            z-index: 1000;
+        }
+
+        .settings-panel {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            height: 100%;
+            background: white;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.3);
+            transition: right 0.3s ease;
+            z-index: 999;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .settings-panel.open {
+            right: 0;
+        }
+
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #ecf0f1;
+        }
+
+        .settings-header h2 {
+            margin: 0;
+            color: #2c3e50;
+        }
+
+        .close-button {
+            background: none;
+            border: none;
+            font-size: 30px;
+            cursor: pointer;
+            color: #7f8c8d;
+        }
+
+        .setting-group {
+            margin-bottom: 25px;
+        }
+
+        .setting-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+
+        .setting-group input[type="color"] {
+            width: 100%;
+            height: 50px;
+            border: 2px solid #ecf0f1;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .setting-group input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ecf0f1;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .settings-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+        }
+
+        .settings-actions button {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .save-settings {
+            background: #2ecc71;
+            color: white;
+        }
+
+        .reset-settings {
+            background: #e74c3c;
+            color: white;
+        }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>🚚 TruckerCan</h1>
-        <p>Find a bathroom. Fast.</p>
+    <!-- Settings Button -->
+    <button class="settings-button" onclick="toggleSettings()">⚙️</button>
+
+    <!-- Settings Panel -->
+    <div id="settingsPanel" class="settings-panel">
+        <div class="settings-header">
+            <h2>Admin Settings</h2>
+            <button class="close-button" onclick="toggleSettings()">×</button>
+        </div>
+
+        <div class="setting-group">
+            <label>Header Background Color</label>
+            <input type="color" id="headerColor" value="#2ecc71">
+        </div>
+
+        <div class="setting-group">
+            <label>Emergency Button Color</label>
+            <input type="color" id="emergencyButtonColor" value="#e74c3c">
+        </div>
+
+        <div class="setting-group">
+            <label>Emergency Button Text</label>
+            <input type="text" id="emergencyButtonText" value="🚨 EMERGENCY - FIND ANY BATHROOM NOW">
+        </div>
+
+        <div class="setting-group">
+            <label>Navigation Button Color</label>
+            <input type="color" id="navButtonColor" value="#3498db">
+        </div>
+
+        <div class="setting-group">
+            <label>Add Button Color</label>
+            <input type="color" id="addButtonColor" value="#2ecc71">
+        </div>
+
+        <div class="setting-group">
+            <label>App Title</label>
+            <input type="text" id="appTitle" value="🚚 TruckerCan">
+        </div>
+
+        <div class="setting-group">
+            <label>App Subtitle</label>
+            <input type="text" id="appSubtitle" value="Find a bathroom. Fast.">
+        </div>
+
+        <div class="settings-actions">
+            <button class="save-settings" onclick="saveSettings()">Save Changes</button>
+            <button class="reset-settings" onclick="resetSettings()">Reset to Default</button>
+        </div>
+    </div>
+
+    <div class="header" id="header">
+        <h1 id="appTitleDisplay">🚚 TruckerCan</h1>
+        <p id="appSubtitleDisplay">Find a bathroom. Fast.</p>
     </div>
     <!-- Version 2.0 with fallback mode -->
 
-    <button class="emergency-button" onclick="findBathrooms(true)">
+    <button class="emergency-button" id="emergencyButton" onclick="findBathrooms(true)">
         🚨 EMERGENCY - FIND ANY BATHROOM NOW
     </button>
 
@@ -134,51 +294,156 @@
 
     <div id="bathroomList"></div>
 
-    <button class="add-button" onclick="addBathroom()">+</button>
+    <button class="add-button" id="addButton" onclick="addBathroom()">+</button>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, addDoc, getDocs, onSnapshot, query, orderBy, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAhCXWT8Fj2E6zT6HNloK7JNYOV1E4pdUg",
+            authDomain: "truckcan-3a583.firebaseapp.com",
+            projectId: "truckcan-3a583",
+            storageBucket: "truckcan-3a583.firebasestorage.app",
+            messagingSenderId: "403434775821",
+            appId: "1:403434775821:web:a0efe1b0982fae8dd0bc44",
+            measurementId: "G-ELY5NM61NX"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Make db available globally
+        window.db = db;
+        window.firestoreModules = { collection, addDoc, getDocs, onSnapshot, query, orderBy, Timestamp };
+
+        console.log('Firebase initialized successfully!');
+    </script>
 
     <script>
         // This is where the magic happens!
-        
-        // Sample bathroom data (later this comes from a database)
-        // Using real locations along I-87 in New York
-        const sampleBathrooms = [
-            {
-                name: "Pilot Travel Center",
-                lat: 41.7003,
-                lon: -73.9210,
-                highway: "I-87",
-                exit: "15",
-                truckParking: true,
-                open24h: true,
-                parkingDifficulty: 2,
-                tips: "Park in back row for quiet night"
-            },
-            {
-                name: "Mobil Gas Station",
-                lat: 41.8203,
-                lon: -73.9410,
-                highway: "I-87",
-                exit: "17",
-                truckParking: true,
-                open24h: false,
-                parkingDifficulty: 4,
-                tips: "Tight parking, avoid rush hour"
-            },
-            {
-                name: "Rest Area",
-                lat: 42.0503,
-                lon: -74.0010,
-                highway: "I-87",
-                exit: "Mile 33",
-                truckParking: true,
-                open24h: true,
-                parkingDifficulty: 1,
-                tips: "Clean, well-lit, safe overnight"
-            }
-        ];
 
         // Store user's current location
         let userLocation = null;
+
+        // Cache for bathrooms loaded from Firebase
+        let bathroomCache = [];
+
+        // Firebase Helper Functions
+        async function loadBathroomsFromFirebase() {
+            try {
+                const { collection, getDocs } = window.firestoreModules;
+                const bathroomsRef = collection(window.db, 'bathrooms');
+                const snapshot = await getDocs(bathroomsRef);
+
+                const bathrooms = [];
+                snapshot.forEach((doc) => {
+                    bathrooms.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+
+                bathroomCache = bathrooms;
+                console.log(`Loaded ${bathrooms.length} bathrooms from Firebase`);
+                return bathrooms;
+            } catch (error) {
+                console.error('Error loading bathrooms:', error);
+                // Return sample data as fallback
+                return getSampleBathrooms();
+            }
+        }
+
+        async function saveBathroomToFirebase(bathroom) {
+            try {
+                const { collection, addDoc, Timestamp } = window.firestoreModules;
+                const bathroomsRef = collection(window.db, 'bathrooms');
+
+                const bathroomData = {
+                    ...bathroom,
+                    createdAt: Timestamp.now(),
+                    upvotes: 0,
+                    downvotes: 0
+                };
+
+                const docRef = await addDoc(bathroomsRef, bathroomData);
+                console.log('Bathroom saved with ID:', docRef.id);
+                return docRef.id;
+            } catch (error) {
+                console.error('Error saving bathroom:', error);
+                throw error;
+            }
+        }
+
+        // Setup real-time listener for bathroom updates
+        function setupRealtimeListener() {
+            try {
+                const { collection, onSnapshot } = window.firestoreModules;
+                const bathroomsRef = collection(window.db, 'bathrooms');
+
+                onSnapshot(bathroomsRef, (snapshot) => {
+                    console.log('Real-time update: bathrooms changed');
+                    const bathrooms = [];
+                    snapshot.forEach((doc) => {
+                        bathrooms.push({
+                            id: doc.id,
+                            ...doc.data()
+                        });
+                    });
+                    bathroomCache = bathrooms;
+
+                    // Refresh display if we're viewing bathrooms
+                    if (document.getElementById('bathroomList').children.length > 0) {
+                        findBathrooms();
+                    }
+                });
+            } catch (error) {
+                console.error('Error setting up real-time listener:', error);
+            }
+        }
+
+        // Fallback sample data
+        function getSampleBathrooms() {
+            return [
+                {
+                    name: "Pilot Travel Center",
+                    lat: 41.7003,
+                    lon: -73.9210,
+                    highway: "I-87",
+                    exit: "15",
+                    truckParking: true,
+                    open24h: true,
+                    parkingDifficulty: 2,
+                    tips: "Park in back row for quiet night"
+                },
+                {
+                    name: "Mobil Gas Station",
+                    lat: 41.8203,
+                    lon: -73.9410,
+                    highway: "I-87",
+                    exit: "17",
+                    truckParking: true,
+                    open24h: false,
+                    parkingDifficulty: 4,
+                    tips: "Tight parking, avoid rush hour"
+                },
+                {
+                    name: "Rest Area",
+                    lat: 42.0503,
+                    lon: -74.0010,
+                    highway: "I-87",
+                    exit: "Mile 33",
+                    truckParking: true,
+                    open24h: true,
+                    parkingDifficulty: 1,
+                    tips: "Clean, well-lit, safe overnight"
+                }
+            ];
+        }
 
         // Calculate distance between two coordinates using Haversine formula
         function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -245,8 +510,21 @@
                     await getUserLocation();
                 }
 
+                // Load bathrooms from Firebase (or use cache)
+                let bathrooms;
+                if (bathroomCache.length === 0) {
+                    bathrooms = await loadBathroomsFromFirebase();
+                } else {
+                    bathrooms = bathroomCache;
+                }
+
+                // If still no bathrooms, use sample data
+                if (bathrooms.length === 0) {
+                    bathrooms = getSampleBathrooms();
+                }
+
                 // Calculate distances for all bathrooms
-                const bathroomsWithDistances = sampleBathrooms.map(bathroom => ({
+                const bathroomsWithDistances = bathrooms.map(bathroom => ({
                     ...bathroom,
                     distance: calculateDistance(
                         userLocation.lat,
@@ -304,8 +582,21 @@
         }
 
         // Function to show bathrooms without location (no distance calculation)
-        function showBathroomsWithoutLocation(emergency = false) {
-            const bathroomsToShow = emergency ? sampleBathrooms : sampleBathrooms.slice(0, 2);
+        async function showBathroomsWithoutLocation(emergency = false) {
+            // Load bathrooms from Firebase
+            let bathrooms;
+            if (bathroomCache.length === 0) {
+                bathrooms = await loadBathroomsFromFirebase();
+            } else {
+                bathrooms = bathroomCache;
+            }
+
+            // If still no bathrooms, use sample data
+            if (bathrooms.length === 0) {
+                bathrooms = getSampleBathrooms();
+            }
+
+            const bathroomsToShow = emergency ? bathrooms : bathrooms.slice(0, 2);
 
             // Add a placeholder distance message
             const bathroomsWithPlaceholder = bathroomsToShow.map(bathroom => ({
@@ -388,6 +679,10 @@
                 const navButton = document.createElement('button');
                 navButton.className = 'navigate-button';
                 navButton.textContent = '🗺️ Navigate';
+                // Apply custom color if set
+                if (window.customNavButtonColor) {
+                    navButton.style.background = window.customNavButtonColor;
+                }
                 navButton.addEventListener('click', () => {
                     navigate(bathroom);
                 });
@@ -426,8 +721,8 @@
                 const exit = prompt("What exit number?") || "Unknown";
                 const tips = prompt("Any tips for other truckers?");
 
-                // Add to our list with current GPS coordinates
-                sampleBathrooms.push({
+                // Create bathroom object
+                const newBathroom = {
                     name: name,
                     lat: userLocation.lat,
                     lon: userLocation.lon,
@@ -437,17 +732,107 @@
                     open24h: true,
                     parkingDifficulty: 3,
                     tips: tips || ""
-                });
+                };
 
-                alert("Thanks! Bathroom added with your current location!");
+                // Save to Firebase
+                await saveBathroomToFirebase(newBathroom);
+
+                alert("Thanks! Bathroom added and shared with all users!");
+
+                // Refresh the bathroom list
+                bathroomCache = []; // Clear cache to force reload
                 findBathrooms();
             } catch (error) {
                 alert(`Error adding bathroom: ${error.message}`);
             }
         }
 
+        // Admin Settings Functions
+        const defaultSettings = {
+            headerColor: '#2ecc71',
+            emergencyButtonColor: '#e74c3c',
+            emergencyButtonText: '🚨 EMERGENCY - FIND ANY BATHROOM NOW',
+            navButtonColor: '#3498db',
+            addButtonColor: '#2ecc71',
+            appTitle: '🚚 TruckerCan',
+            appSubtitle: 'Find a bathroom. Fast.'
+        };
+
+        // Toggle settings panel
+        function toggleSettings() {
+            const panel = document.getElementById('settingsPanel');
+            panel.classList.toggle('open');
+        }
+
+        // Load settings from localStorage
+        function loadSettings() {
+            const saved = localStorage.getItem('truckerCanSettings');
+            return saved ? JSON.parse(saved) : defaultSettings;
+        }
+
+        // Apply settings to the page
+        function applySettings(settings) {
+            // Apply colors
+            document.getElementById('header').style.background = settings.headerColor;
+            document.getElementById('emergencyButton').style.background = settings.emergencyButtonColor;
+            document.getElementById('addButton').style.background = settings.addButtonColor;
+
+            // Apply text
+            document.getElementById('emergencyButton').textContent = settings.emergencyButtonText;
+            document.getElementById('appTitleDisplay').textContent = settings.appTitle;
+            document.getElementById('appSubtitleDisplay').textContent = settings.appSubtitle;
+
+            // Update form inputs
+            document.getElementById('headerColor').value = settings.headerColor;
+            document.getElementById('emergencyButtonColor').value = settings.emergencyButtonColor;
+            document.getElementById('emergencyButtonText').value = settings.emergencyButtonText;
+            document.getElementById('navButtonColor').value = settings.navButtonColor;
+            document.getElementById('addButtonColor').value = settings.addButtonColor;
+            document.getElementById('appTitle').value = settings.appTitle;
+            document.getElementById('appSubtitle').value = settings.appSubtitle;
+
+            // Store nav button color globally for use when creating buttons
+            window.customNavButtonColor = settings.navButtonColor;
+        }
+
+        // Save settings
+        function saveSettings() {
+            const settings = {
+                headerColor: document.getElementById('headerColor').value,
+                emergencyButtonColor: document.getElementById('emergencyButtonColor').value,
+                emergencyButtonText: document.getElementById('emergencyButtonText').value,
+                navButtonColor: document.getElementById('navButtonColor').value,
+                addButtonColor: document.getElementById('addButtonColor').value,
+                appTitle: document.getElementById('appTitle').value,
+                appSubtitle: document.getElementById('appSubtitle').value
+            };
+
+            localStorage.setItem('truckerCanSettings', JSON.stringify(settings));
+            applySettings(settings);
+            alert('Settings saved successfully!');
+        }
+
+        // Reset settings to default
+        function resetSettings() {
+            if (confirm('Are you sure you want to reset all settings to default?')) {
+                localStorage.removeItem('truckerCanSettings');
+                applySettings(defaultSettings);
+                alert('Settings reset to default!');
+            }
+        }
+
         // Load bathrooms when page opens
         window.onload = function() {
+            // Load and apply saved settings
+            const settings = loadSettings();
+            applySettings(settings);
+
+            // Setup real-time listener for bathroom updates
+            setTimeout(() => {
+                setupRealtimeListener();
+            }, 1000); // Wait 1 second for Firebase to fully initialize
+
+            // Load bathrooms
             findBathrooms();
         };
     </script>
