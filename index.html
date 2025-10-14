@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>TruckerCan - Find a Bathroom NOW</title>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>TruckerCan - Find a Bathroom NOW</title>
     <style>
         * {
             margin: 0;
@@ -138,10 +139,12 @@
         // This is where the magic happens!
         
         // Sample bathroom data (later this comes from a database)
+        // Using real locations along I-87 in New York
         const sampleBathrooms = [
             {
                 name: "Pilot Travel Center",
-                distance: 0.8,
+                lat: 41.7003,
+                lon: -73.9210,
                 highway: "I-87",
                 exit: "15",
                 truckParking: true,
@@ -151,7 +154,8 @@
             },
             {
                 name: "Mobil Gas Station",
-                distance: 2.3,
+                lat: 41.8203,
+                lon: -73.9410,
                 highway: "I-87",
                 exit: "17",
                 truckParking: true,
@@ -161,7 +165,8 @@
             },
             {
                 name: "Rest Area",
-                distance: 4.1,
+                lat: 42.0503,
+                lon: -74.0010,
                 highway: "I-87",
                 exit: "Mile 33",
                 truckParking: true,
@@ -171,78 +176,272 @@
             }
         ];
 
+        // Store user's current location
+        let userLocation = null;
+
+        // Calculate distance between two coordinates using Haversine formula
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 3959; // Earth's radius in miles
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                     Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            const distance = R * c;
+            return Math.round(distance * 10) / 10; // Round to 1 decimal place
+        }
+
+        // Get user's location
+        function getUserLocation() {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    reject(new Error('Geolocation is not supported by your browser'));
+                    return;
+                }
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        userLocation = {
+                            lat: position.coords.latitude,
+                            lon: position.coords.longitude
+                        };
+                        resolve(userLocation);
+                    },
+                    (error) => {
+                        let errorMessage = 'Unable to get your location';
+                        switch(error.code) {
+                            case error.PERMISSION_DENIED:
+                                errorMessage = 'Location permission denied. Please enable location access.';
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                errorMessage = 'Location information unavailable.';
+                                break;
+                            case error.TIMEOUT:
+                                errorMessage = 'Location request timed out.';
+                                break;
+                        }
+                        reject(new Error(errorMessage));
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 300000 // Cache location for 5 minutes
+                    }
+                );
+            });
+        }
+
         // Function to find bathrooms
-        function findBathrooms(emergency = false) {
+        async function findBathrooms(emergency = false) {
             // Show loading message
             document.getElementById('loading').style.display = 'block';
             document.getElementById('bathroomList').innerHTML = '';
-            
-            // Simulate finding bathrooms (1 second delay)
-            setTimeout(() => {
-                displayBathrooms(emergency ? sampleBathrooms : sampleBathrooms.slice(0, 2));
+
+            try {
+                // Get user's location if we don't have it yet
+                if (!userLocation) {
+                    await getUserLocation();
+                }
+
+                // Calculate distances for all bathrooms
+                const bathroomsWithDistances = sampleBathrooms.map(bathroom => ({
+                    ...bathroom,
+                    distance: calculateDistance(
+                        userLocation.lat,
+                        userLocation.lon,
+                        bathroom.lat,
+                        bathroom.lon
+                    )
+                }));
+
+                // Sort by distance (closest first)
+                bathroomsWithDistances.sort((a, b) => a.distance - b.distance);
+
+                // Display bathrooms
+                displayBathrooms(emergency ? bathroomsWithDistances : bathroomsWithDistances.slice(0, 2));
                 document.getElementById('loading').style.display = 'none';
-            }, 1000);
+
+            } catch (error) {
+                // Handle errors - offer to continue without location
+                document.getElementById('loading').style.display = 'none';
+
+                const errorCard = document.createElement('div');
+                errorCard.className = 'bathroom-card';
+                errorCard.style.background = '#ffebee';
+                errorCard.style.borderLeft = '4px solid #e74c3c';
+
+                const title = document.createElement('h3');
+                title.style.color = '#e74c3c';
+                title.style.marginBottom = '10px';
+                title.textContent = '⚠️ Location Error';
+
+                const message = document.createElement('p');
+                message.style.marginBottom = '10px';
+                message.textContent = error.message;
+
+                const instructions = document.createElement('p');
+                instructions.style.fontSize = '14px';
+                instructions.style.color = '#666';
+                instructions.style.marginBottom = '15px';
+                instructions.textContent = 'To use this app, please enable location access in your browser settings.';
+
+                const skipButton = document.createElement('button');
+                skipButton.className = 'navigate-button';
+                skipButton.textContent = 'Continue Without Location (Show All Bathrooms)';
+                skipButton.addEventListener('click', () => {
+                    showBathroomsWithoutLocation(emergency);
+                });
+
+                errorCard.appendChild(title);
+                errorCard.appendChild(message);
+                errorCard.appendChild(instructions);
+                errorCard.appendChild(skipButton);
+
+                document.getElementById('bathroomList').appendChild(errorCard);
+            }
+        }
+
+        // Function to show bathrooms without location (no distance calculation)
+        function showBathroomsWithoutLocation(emergency = false) {
+            const bathroomsToShow = emergency ? sampleBathrooms : sampleBathrooms.slice(0, 2);
+
+            // Add a placeholder distance message
+            const bathroomsWithPlaceholder = bathroomsToShow.map(bathroom => ({
+                ...bathroom,
+                distance: '?'
+            }));
+
+            displayBathrooms(bathroomsWithPlaceholder);
         }
 
         // Function to display bathrooms
         function displayBathrooms(bathrooms) {
             const listElement = document.getElementById('bathroomList');
-            
+
             bathrooms.forEach(bathroom => {
                 const card = document.createElement('div');
                 card.className = 'bathroom-card';
-                
-                card.innerHTML = `
-                    <div class="distance">${bathroom.distance} miles</div>
-                    <div class="name">${bathroom.name}</div>
-                    <div class="location">📍 ${bathroom.highway} Exit ${bathroom.exit}</div>
-                    
-                    <div class="badges">
-                        ${bathroom.truckParking ? '<span class="badge">🚚 Truck OK</span>' : ''}
-                        ${bathroom.open24h ? '<span class="badge">🌙 24 Hours</span>' : ''}
-                        ${bathroom.parkingDifficulty >= 4 ? '<span class="badge warning">⚠️ Tight Parking</span>' : ''}
-                        ${bathroom.parkingDifficulty <= 2 ? '<span class="badge">✅ Easy Park</span>' : ''}
-                    </div>
-                    
-                    ${bathroom.tips ? `<div style="margin-top: 10px; color: #666;">💡 ${bathroom.tips}</div>` : ''}
-                    
-                    <button class="navigate-button" onclick="navigate('${bathroom.name}')">
-                        🗺️ Navigate
-                    </button>
-                `;
-                
+
+                // Create distance element
+                const distanceDiv = document.createElement('div');
+                distanceDiv.className = 'distance';
+                distanceDiv.textContent = `${bathroom.distance} miles`;
+
+                // Create name element
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'name';
+                nameDiv.textContent = bathroom.name;
+
+                // Create location element
+                const locationDiv = document.createElement('div');
+                locationDiv.className = 'location';
+                locationDiv.textContent = `📍 ${bathroom.highway} Exit ${bathroom.exit}`;
+
+                // Create badges container
+                const badgesDiv = document.createElement('div');
+                badgesDiv.className = 'badges';
+
+                if (bathroom.truckParking) {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge';
+                    badge.textContent = '🚚 Truck OK';
+                    badgesDiv.appendChild(badge);
+                }
+
+                if (bathroom.open24h) {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge';
+                    badge.textContent = '🌙 24 Hours';
+                    badgesDiv.appendChild(badge);
+                }
+
+                if (bathroom.parkingDifficulty >= 4) {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge warning';
+                    badge.textContent = '⚠️ Tight Parking';
+                    badgesDiv.appendChild(badge);
+                } else if (bathroom.parkingDifficulty <= 2) {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge';
+                    badge.textContent = '✅ Easy Park';
+                    badgesDiv.appendChild(badge);
+                }
+
+                // Append elements to card
+                card.appendChild(distanceDiv);
+                card.appendChild(nameDiv);
+                card.appendChild(locationDiv);
+                card.appendChild(badgesDiv);
+
+                // Create tips element if tips exist
+                if (bathroom.tips) {
+                    const tipsDiv = document.createElement('div');
+                    tipsDiv.style.marginTop = '10px';
+                    tipsDiv.style.color = '#666';
+                    tipsDiv.textContent = `💡 ${bathroom.tips}`;
+                    card.appendChild(tipsDiv);
+                }
+
+                // Create navigate button with event listener (secure way)
+                const navButton = document.createElement('button');
+                navButton.className = 'navigate-button';
+                navButton.textContent = '🗺️ Navigate';
+                navButton.addEventListener('click', () => {
+                    navigate(bathroom);
+                });
+
+                card.appendChild(navButton);
                 listElement.appendChild(card);
             });
         }
 
-        // Function to navigate (opens Google Maps)
-        function navigate(bathroomName) {
-            // For now, just search Google Maps for the place name
-            const url = `https://www.google.com/maps/search/${encodeURIComponent(bathroomName)}`;
+        // Function to navigate (opens Google Maps with exact coordinates)
+        function navigate(bathroom) {
+            // Use coordinates if available, otherwise search by name
+            let url;
+            if (bathroom.lat && bathroom.lon) {
+                // Direct navigation to coordinates
+                url = `https://www.google.com/maps/dir/?api=1&destination=${bathroom.lat},${bathroom.lon}`;
+            } else {
+                // Fallback to search by name
+                url = `https://www.google.com/maps/search/${encodeURIComponent(bathroom.name)}`;
+            }
             window.open(url, '_blank');
         }
 
         // Function to add a bathroom
-        function addBathroom() {
-            const name = prompt("What's the name of this truck stop/rest area?");
-            if (name) {
-                const distance = prompt("How many miles from your location?");
+        async function addBathroom() {
+            try {
+                // Get user's current location to use as the bathroom's location
+                if (!userLocation) {
+                    await getUserLocation();
+                }
+
+                const name = prompt("What's the name of this truck stop/rest area?");
+                if (!name) return;
+
+                const highway = prompt("What highway? (e.g., I-87)") || "Unknown";
+                const exit = prompt("What exit number?") || "Unknown";
                 const tips = prompt("Any tips for other truckers?");
-                
-                // Add to our list
+
+                // Add to our list with current GPS coordinates
                 sampleBathrooms.push({
                     name: name,
-                    distance: parseFloat(distance) || 0,
-                    highway: "I-87",
-                    exit: "Unknown",
+                    lat: userLocation.lat,
+                    lon: userLocation.lon,
+                    highway: highway,
+                    exit: exit,
                     truckParking: true,
                     open24h: true,
                     parkingDifficulty: 3,
-                    tips: tips
+                    tips: tips || ""
                 });
-                
-                alert("Thanks! Bathroom added!");
+
+                alert("Thanks! Bathroom added with your current location!");
                 findBathrooms();
+            } catch (error) {
+                alert(`Error adding bathroom: ${error.message}`);
             }
         }
 
