@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Firebase Connection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        #status {
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>Firebase Connection Test</h1>
+    <div id="status" class="info">Testing connection...</div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, addDoc, getDocs, Timestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        const statusDiv = document.getElementById('status');
+
+        try {
+            // Firebase configuration
+            const firebaseConfig = {
+                apiKey: "AIzaSyAhCXWT8Fj2E6zT6HNloK7JNYOV1E4pdUg",
+                authDomain: "truckcan-3a583.firebaseapp.com",
+                projectId: "truckcan-3a583",
+                storageBucket: "truckcan-3a583.firebasestorage.app",
+                messagingSenderId: "403434775821",
+                appId: "1:403434775821:web:a0efe1b0982fae8dd0bc44",
+                measurementId: "G-ELY5NM61NX"
+            };
+
+            // Initialize Firebase
+            const app = initializeApp(firebaseConfig);
+            const db = getFirestore(app);
+
+            statusDiv.className = 'info';
+            statusDiv.innerHTML = '✓ Firebase initialized<br>Testing database write...';
+
+            // Try to add a test bathroom
+            const bathroomsRef = collection(db, 'bathrooms');
+
+            const testBathroom = {
+                name: "Test Location - Delete Me",
+                lat: 40.7128,
+                lon: -74.0060,
+                highway: "Test",
+                exit: "Test",
+                truckParking: true,
+                open24h: true,
+                parkingDifficulty: 1,
+                tips: "This is a test entry",
+                createdAt: Timestamp.now(),
+                upvotes: 0,
+                downvotes: 0
+            };
+
+            addDoc(bathroomsRef, testBathroom)
+                .then(async (docRef) => {
+                    statusDiv.className = 'success';
+                    statusDiv.innerHTML = `
+                        ✅ SUCCESS!<br><br>
+                        - Firebase connected<br>
+                        - Database write successful<br>
+                        - Document ID: ${docRef.id}<br><br>
+                        Now checking if we can read...
+                    `;
+
+                    // Try to read
+                    const snapshot = await getDocs(bathroomsRef);
+                    statusDiv.innerHTML += `<br>✅ Found ${snapshot.size} bathroom(s) in database!<br><br>`;
+
+                    snapshot.forEach((doc) => {
+                        statusDiv.innerHTML += `• ${doc.data().name}<br>`;
+                    });
+
+                    statusDiv.innerHTML += '<br><strong>Everything is working! You can now use the seeder.</strong>';
+                })
+                .catch((error) => {
+                    statusDiv.className = 'error';
+                    statusDiv.innerHTML = `
+                        ❌ ERROR writing to database:<br><br>
+                        ${error.message}<br><br>
+                        <strong>Possible fixes:</strong><br>
+                        1. Go to Firebase Console<br>
+                        2. Click "Firestore Database" in left menu<br>
+                        3. If you see "Create database", click it<br>
+                        4. Choose "Start in test mode"<br>
+                        5. Select a location and enable<br><br>
+                        Error details: ${error.code}
+                    `;
+                    console.error('Full error:', error);
+                });
+
+        } catch (error) {
+            statusDiv.className = 'error';
+            statusDiv.innerHTML = `
+                ❌ ERROR initializing Firebase:<br><br>
+                ${error.message}
+            `;
+            console.error('Full error:', error);
+        }
+    </script>
+</body>
+</html>
